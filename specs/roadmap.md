@@ -1,3 +1,12 @@
+⚠️ **IMPORTANT:** Before beginning implementation on the roadmap phases, use the AskUserQuestion tool to confirm:
+1. **Backend preference:** Async end-to-end with FastAPI + asyncpg + PostgreSQL, or alternative stack?
+2. **Frontend framework:** Nuxt 4 with Vue 3 + TypeScript, or alternative (SvelteKit, Next.js)?
+3. **Deployment target:** Docker Compose for local dev, cloud platforms (AWS/GCP/Azure), or self-hosted?
+
+These decisions affect tooling setup and all subsequent phases. Get explicit sign-off before proceeding to Phase 0.
+
+---
+
 # Findr Implementation Roadmap
 
 The roadmap breaks the MVP (v0.1) and Part Two (v2.0) into small, shippable phases. Each phase is 1–2 weeks of focused work and ends with a tested, deployable increment.
