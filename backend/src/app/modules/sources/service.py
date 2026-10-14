@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 from pydantic import TypeAdapter, ValidationError
 
-from src.app.core.exceptions import ConflictError, NotFoundError, ValidationError as AppValidationError
+from src.app.core.exceptions import ConflictError, NotFoundError, ValidationError as DomainValidationError
 from src.app.modules.sources.configs import SourceConfig
 from src.app.modules.sources.connectors.registry import SourceConnectorRegistry
 from src.app.modules.sources.domain import Source
@@ -52,7 +52,7 @@ class SourceService:
         try:
             connector = self.registry.get(kind)
         except ValueError as e:
-            raise AppValidationError(f"Unknown source kind: {kind}", details={"code": "UNKNOWN_KIND"})
+            raise DomainValidationError(f"Unknown source kind: {kind}", details={"code": "UNKNOWN_KIND"})
 
         # Validate config using TypeAdapter for discriminated union
         try:
@@ -61,13 +61,13 @@ class SourceService:
             adapter = TypeAdapter(SourceConfig)
             config_obj = adapter.validate_python(config_dict)
         except ValidationError as e:
-            raise AppValidationError(f"Invalid configuration: {e}", details=e.errors())
+            raise DomainValidationError(f"Invalid configuration: {e}", details=e.errors())
 
         # Validate source is accessible via connector
         try:
             await connector.validate(config_obj)
         except Exception as e:
-            raise AppValidationError(f"Source validation failed: {e}")
+            raise DomainValidationError(f"Source validation failed: {e}")
 
         # Compute identity hash
         identity_hash = hashlib.sha256(config_obj.identity().encode()).hexdigest()
@@ -127,12 +127,12 @@ class SourceService:
                 adapter = TypeAdapter(SourceConfig)
                 config_obj = adapter.validate_python(config_dict)
             except ValidationError as e:
-                raise AppValidationError(f"Invalid configuration: {e}", details=e.errors())
+                raise DomainValidationError(f"Invalid configuration: {e}", details=e.errors())
 
             try:
                 await connector.validate(config_obj)
             except Exception as e:
-                raise AppValidationError(f"Source validation failed: {e}")
+                raise DomainValidationError(f"Source validation failed: {e}")
 
             new_identity_hash = hashlib.sha256(config_obj.identity().encode()).hexdigest()
 
@@ -168,7 +168,7 @@ class SourceService:
             adapter = TypeAdapter(SourceConfig)
             config_obj = adapter.validate_python(source.config)
         except ValidationError as e:
-            raise AppValidationError(f"Stored configuration is invalid: {e}")
+            raise DomainValidationError(f"Stored configuration is invalid: {e}")
 
         try:
             schema = await connector.get_schema(config_obj)
@@ -182,7 +182,7 @@ class SourceService:
             )
             return schema
         except Exception as e:
-            raise AppValidationError(f"Failed to read source schema: {e}")
+            raise DomainValidationError(f"Failed to read source schema: {e}")
 
 
 import hashlib
