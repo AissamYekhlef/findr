@@ -1,0 +1,127 @@
+/* Findr Design Tokens */
+
+:root {
+  /* Light mode - Teal preset (default) */
+  --accent: #0a6b60;
+  --ground: #edf0ef;
+  --surface: #fafbfa;
+  --ink: #16201e;
+  --add: #1f8a4c;
+  --edit: #c98a00;
+  --del: #cc3b3b;
+  --info: #2f6fcb;
+
+  /* Derived tokens - computed with color-mix */
+  --raise: color-mix(in srgb, var(--ink) 6%, var(--surface));
+  --line: color-mix(in srgb, var(--ink) 15%, var(--surface));
+  --ink2: color-mix(in srgb, var(--ink) 68%, var(--surface));
+  --ink3: color-mix(in srgb, var(--ink) 54%, var(--surface));
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  --add-bg: color-mix(in srgb, var(--add) 16%, var(--surface));
+  --edit-bg: color-mix(in srgb, var(--edit) 16%, var(--surface));
+  --del-bg: color-mix(in srgb, var(--del) 16%, var(--surface));
+  --info-bg: color-mix(in srgb, var(--info) 16%, var(--surface));
+  --add-fg: color-mix(in srgb, var(--add) 58%, var(--ink));
+  --edit-fg: color-mix(in srgb, var(--edit) 58%, var(--ink));
+  --del-fg: color-mix(in srgb, var(--del) 58%, var(--ink));
+  --info-fg: color-mix(in srgb, var(--info) 58%, var(--ink));
+
+  /* Density */
+  --row-h: 38px;
+  --head-h: 40px;
+
+  /* Base unit for spacing (4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* Typography */
+  --font-ui: 'Schibsted Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --accent: #3fc1ae;
+    --ground: #0e1413;
+    --surface: #151d1b;
+    --ink: #e3ebe8;
+    --add: #4cc37a;
+    --edit: #e3b341;
+    --del: #ef6b6f;
+    --info: #6fa3ea;
+    color-scheme: dark;
+  }
+}
+
+/* Explicit light mode override */
+:root[data-theme='light'] {
+  --accent: #0a6b60;
+  --ground: #edf0ef;
+  --surface: #fafbfa;
+  --ink: #16201e;
+  --add: #1f8a4c;
+  --edit: #c98a00;
+  --del: #cc3b3b;
+  --info: #2f6fcb;
+  color-scheme: light;
+}
+
+/* Explicit dark mode override */
+:root[data-theme='dark'] {
+  --accent: #3fc1ae;
+  --ground: #0e1413;
+  --surface: #151d1b;
+  --ink: #e3ebe8;
+  --add: #4cc37a;
+  --edit: #e3b341;
+  --del: #ef6b6f;
+  --info: #6fa3ea;
+  color-scheme: dark;
+}
+
+/* Density variants */
+:root[data-density='compact'] {
+  --row-h: 32px;
+  --head-h: 34px;
+}
+
+:root[data-density='comfortable'] {
+  --row-h: 46px;
+  --head-h: 46px;
+}
+
+/* Base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+  background-color: var(--ground);
+}
+
+body {
+  background-color: var(--ground);
+  color: var(--ink);
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
