@@ -55,8 +55,12 @@ async def init_db() -> None:
 
     Creates tables if they don't exist (for development).
     """
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        print(f"Warning: Database initialization failed: {e}")
+        print("Running in offline mode. Database features will not be available.")
 
 
 async def close_db() -> None:
