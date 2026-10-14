@@ -638,18 +638,18 @@ curl http://localhost:8000/api/v1/source-kinds
 ### Backend
 ```bash
 # All tests pass
-pytest backend/tests/unit -v --cov=src/app/features/sources --cov-report=term-missing
+pytest backend/tests/unit -v --cov=src/app/modules/sources --cov-report=term-missing
 ✓ Coverage > 85%, all pass
 
 pytest backend/tests/integration -v
 ✓ All pass
 
 # Linting
-ruff check backend/src/app/features/sources
+ruff check backend/src/app/modules/sources
 ✓ No errors
 
 # Type checking
-mypy backend/src/app/features/sources --strict
+mypy backend/src/app/modules/sources --strict
 ✓ No errors
 ```
 

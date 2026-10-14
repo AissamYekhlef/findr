@@ -34,7 +34,7 @@ Implement the backend **source connector abstraction** with CSV and XLSX support
 **Acceptance:** `python -c "from src.app.core.config import settings; print(settings.ALLOWED_SOURCE_ROOTS)"` works; app starts with valid env, fails to start with bad env.
 
 **1.2: Database (Source Table)**
-- [ ] Create `src/app/features/sources/models.py` with SQLAlchemy ORM model `Source`:
+- [ ] Create `src/app/modules/sources/models.py` with SQLAlchemy ORM model `Source`:
   - Columns: id (UUID v7, PK), name (str, max 255), kind (str), config (JSON), config_version (int, default 1), identity_hash (str, unique index), fingerprint (nullable), secret_ref (nullable), created_at/updated_at (UTC, server-set), last_opened_at (nullable).
   - Use `sqlalchemy.orm.mapped_column` with defaults and constraints.
 - [ ] Create Alembic migration: initial migration for `sources` table with unique index on `identity_hash`.
@@ -55,10 +55,10 @@ Implement the backend **source connector abstraction** with CSV and XLSX support
 ### Group 2: Backend — Domain, Protocols & Connector Abstraction (Days 2–3)
 
 **2.1: Domain Objects & Config Models**
-- [ ] Create `src/app/features/sources/domain.py`:
+- [ ] Create `src/app/modules/sources/domain.py`:
   - `Source` domain object (id, name, kind, config, identity_hash, fingerprint, created_at, etc.).
   - Not an ORM model; values are immutable or DTO-like.
-- [ ] Create `src/app/features/sources/configs.py`:
+- [ ] Create `src/app/modules/sources/configs.py`:
   - `CsvConfig(BaseModel)`: kind="csv", path, delimiter, encoding, header_row.
   - `XlsxConfig(BaseModel)`: kind="xlsx", path, sheet, header_row.
   - `SourceConfig = Annotated[CsvConfig | XlsxConfig, Field(discriminator="kind")]` (Pydantic discriminated union).
@@ -68,7 +68,7 @@ Implement the backend **source connector abstraction** with CSV and XLSX support
 **Acceptance:** `SourceConfig.model_validate({"kind": "csv", "path": "C:\\Data\\sales.csv"})` works; relative paths raise `ValidationFailed`.
 
 **2.2: Connector Protocol & Base Class**
-- [ ] Create `src/app/features/sources/protocols.py`:
+- [ ] Create `src/app/modules/sources/protocols.py`:
   - `Capability(Flag)`: READ, WRITE, SQL (bitwise flags).
   - `SourceConnector(Protocol)`:
     - `kind: ClassVar[str]`
@@ -78,14 +78,14 @@ Implement the backend **source connector abstraction** with CSV and XLSX support
     - `async def get_schema(config) -> SourceSchema` (returns normalized schema)
     - `async def fingerprint(config) -> str` (SHA-256 of file contents, for P3)
   - `SourceSchema(BaseModel)`: entities, fields (name, type, nullable, sample rows).
-- [ ] Create `src/app/features/sources/connectors/base.py`:
+- [ ] Create `src/app/modules/sources/connectors/base.py`:
   - Base class with shared validation logic (path normalization, allowed roots check).
   - Abstract methods for subclasses.
 
 **Acceptance:** Protocol is defined; connectors implement it; mypy is happy.
 
 **2.3: Connector Registry**
-- [ ] Create `src/app/features/sources/connectors/registry.py`:
+- [ ] Create `src/app/modules/sources/connectors/registry.py`:
   - `SourceConnectorRegistry` class: maps kind → connector.
   - Methods: `register(kind, connector)`, `get(kind)`, `list_kinds()`.
   - Thread-safe (or ensures single-threaded setup in container).
@@ -98,7 +98,7 @@ Implement the backend **source connector abstraction** with CSV and XLSX support
 ### Group 3: Backend — CSV & XLSX Connectors (Days 3–4)
 
 **3.1: CSV Connector**
-- [ ] Create `src/app/features/sources/connectors/csv.py`:
+- [ ] Create `src/app/modules/sources/connectors/csv.py`:
   - Implements `SourceConnector` protocol.
   - `kind = "csv"`, `capabilities = Capability.READ`, `config_model = CsvConfig`.
   - `async def validate(config)`: check file exists, is readable, can parse first row (DuckDB).
@@ -110,7 +110,7 @@ Implement the backend **source connector abstraction** with CSV and XLSX support
 **Acceptance:** Test: read a CSV with non-default delimiter; schema detected correctly. Test: try to read non-existent file; validation fails with clear message.
 
 **3.2: XLSX Connector**
-- [ ] Create `src/app/features/sources/connectors/xlsx.py`:
+- [ ] Create `src/app/modules/sources/connectors/xlsx.py`:
   - Implements `SourceConnector` protocol.
   - `kind = "xlsx"`, `capabilities = Capability.READ`, `config_model = XlsxConfig`.
   - `async def validate(config)`: check file exists, is readable, enumerate sheets, validate sheet exists (or use first sheet if not specified).
@@ -126,7 +126,7 @@ Implement the backend **source connector abstraction** with CSV and XLSX support
 ### Group 4: Backend — Repository & Persistence (Days 4–5)
 
 **4.1: Repository Protocol & SQLAlchemy Implementation**
-- [ ] Create `src/app/features/sources/protocols.py` (or extend):
+- [ ] Create `src/app/modules/sources/protocols.py` (or extend):
   - `SourceRepository(Protocol)`:
     - `async def create(source: Source) -> Source`
     - `async def get(id: UUID) -> Source | None`
@@ -134,7 +134,7 @@ Implement the backend **source connector abstraction** with CSV and XLSX support
     - `async def update(id, name?, config?) -> Source | None`
     - `async def delete(id: UUID) -> bool`
     - `async def get_by_identity_hash(hash: str) -> Source | None`
-- [ ] Create `src/app/features/sources/repository.py`:
+- [ ] Create `src/app/modules/sources/repository.py`:
   - Implements `SourceRepository` using SQLAlchemy ORM.
   - Methods map domain objects ↔ ORM models.
   - No business logic; only persistence and mapping.
@@ -150,14 +150,14 @@ Implement the backend **source connector abstraction** with CSV and XLSX support
   - Pagination: cursor-based (limit, offset).
   - Windows path normalization: `E:\Data\a.csv` and `e:/data/A.csv` treated as same on Windows.
 
-**Acceptance:** `pytest backend/tests/features/sources/test_repository.py -v` passes; coverage > 85%.
+**Acceptance:** `pytest backend/tests/modules/sources/test_repository.py -v` passes; coverage > 85%.
 
 ---
 
 ### Group 5: Backend — Service Layer (Days 5–6)
 
 **5.1: Source Service**
-- [ ] Create `src/app/features/sources/service.py`:
+- [ ] Create `src/app/modules/sources/service.py`:
   - `SourceService` class.
   - Dependencies (injected via `__init__`):
     - `SourceRepository`
@@ -199,14 +199,14 @@ Implement the backend **source connector abstraction** with CSV and XLSX support
 ### Group 6: Backend — API Endpoints (Day 6)
 
 **6.1: Router & Schemas**
-- [ ] Create `src/app/features/sources/schemas.py`:
+- [ ] Create `src/app/modules/sources/schemas.py`:
   - `SourceResponse(BaseModel)`: id, name, kind, config, identity_hash, fingerprint, created_at, last_opened_at.
   - `SourceListResponse`: items (list), total, next_cursor.
   - `SourceSchemaResponse`: entities, fields (name, type, nullable, samples).
   - `CreateSourceRequest(BaseModel)`: name, kind, config_dict (with discriminator validation).
   - `UpdateSourceRequest(BaseModel)`: name?, config_dict? (all optional).
   - `SourceKindInfo(BaseModel)`: kind, capabilities, config_json_schema.
-- [ ] Create `src/app/features/sources/router.py`:
+- [ ] Create `src/app/modules/sources/router.py`:
   - `POST /api/v1/sources`: create. Parse request, call service.create_source(), return 201.
   - `GET /api/v1/sources`: list. Query params: limit (default 50), cursor. Return SourceListResponse.
   - `GET /api/v1/sources/{id}`: get. Return SourceResponse or 404.
@@ -254,7 +254,7 @@ Implement the backend **source connector abstraction** with CSV and XLSX support
 ### Group 8: Backend — Tests (Days 7–8)
 
 **8.1: Unit Tests (Service)**
-- [ ] `backend/tests/unit/features/sources/test_service.py`:
+- [ ] `backend/tests/unit/modules/sources/test_service.py`:
   - Fake repository, fixed clock, fixed ID generator.
   - No database, no file system.
   - Test: create, get, list, update, delete.
@@ -263,16 +263,16 @@ Implement the backend **source connector abstraction** with CSV and XLSX support
   - Test: config validation.
 
 **8.2: Integration Tests (Repository & API)**
-- [ ] `backend/tests/integration/features/sources/test_repository.py`:
+- [ ] `backend/tests/integration/modules/sources/test_repository.py`:
   - Real SQLite in-memory or temp file.
   - CRUD operations.
   - Unique constraint on identity_hash.
   - Cursor-based pagination.
-- [ ] `backend/tests/integration/features/sources/test_api.py`:
+- [ ] `backend/tests/integration/modules/sources/test_api.py`:
   - Test all endpoints: POST, GET, PATCH, DELETE, /schema, /source-kinds.
   - Test error cases: duplicate, unknown kind, not found, path validation.
   - Test Windows path normalization.
-- [ ] `backend/tests/integration/features/sources/test_extensibility.py`:
+- [ ] `backend/tests/integration/modules/sources/test_extensibility.py`:
   - Define a dummy `FakeKind` connector in the test.
   - Register it with the registry.
   - Create, list, get a source of kind `FakeKind`.
