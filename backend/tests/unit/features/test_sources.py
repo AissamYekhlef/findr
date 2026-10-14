@@ -1,9 +1,11 @@
-"""Unit tests for source service and connectors."""
+"""Comprehensive unit tests for source service and connectors."""
 
-import pytest
 from pathlib import Path
 from uuid import UUID
 
+import pytest
+
+from src.app.core.exceptions import ConflictError, NotFoundError, ValidationError as DomainValidationError
 from src.app.modules.sources.configs import CsvConfig
 from src.app.modules.sources.connectors.csv import CsvConnector
 from src.app.modules.sources.connectors.registry import SourceConnectorRegistry
@@ -30,6 +32,7 @@ class FakeRepository:
         return self.by_identity.get(identity_hash)
 
     async def list(self, limit: int = 50, cursor: str | None = None) -> tuple[list[Source], str | None]:
+        _ = cursor
         items = list(self.sources.values())
         return items[:limit], None
 
@@ -37,7 +40,6 @@ class FakeRepository:
         source = self.sources.get(id)
         if not source:
             return None
-        # Simple update simulation
         updated = Source(
             id=source.id,
             name=kwargs.get("name", source.name),
@@ -76,10 +78,19 @@ class FixedIdGenerator(IdGenerator):
         return UUID("12345678-1234-5678-1234-567812345678")
 
 
+@pytest.fixture(autouse=True)
+def setup_fixture_env(monkeypatch):
+    """Configure ALLOWED_SOURCE_ROOTS to include tests/fixtures automatically."""
+    fixture_dir = str(Path("tests/fixtures").resolve())
+    from src.app.core.config import settings
+    monkeypatch.setattr(settings, "allowed_source_roots", [fixture_dir])
+
+
 @pytest.mark.asyncio
 async def test_csv_config_identity():
     """Test CsvConfig identity normalization."""
-    config = CsvConfig(kind="csv", path=str(Path("tests/fixtures/sample.csv").resolve()))
+    csv_path = str(Path("tests/fixtures/sample_brand_new.csv").resolve())
+    config = CsvConfig(kind="csv", path=csv_path)
     identity = config.identity()
     assert identity.startswith("csv:")
 
@@ -91,3 +102,93 @@ def test_registry():
     registry.register("csv", connector)
     assert registry.get("csv") == connector
     assert "csv" in registry.list_kinds()
+
+    # Test duplicate registration error
+    with pytest.raises(ValueError, match="already registered"):
+        registry.register("csv", connector)
+
+    # Test unknown kind error
+    with pytest.raises(ValueError, match="Unknown source kind"):
+        registry.get("unknown")
+
+
+@pytest.mark.asyncio
+async def test_csv_connector_validation_and_schema():
+    """Test CsvConnector validation, schema inference, and fingerprinting."""
+    csv_path = str(Path("tests/fixtures/sample_brand_new.csv").resolve())
+    config = CsvConfig(kind="csv", path=csv_path)
+    connector = CsvConnector()
+
+    # Validate
+    await connector.validate(config)
+
+    # Get schema
+    schema = await connector.get_schema(config)
+    assert len(schema.entities) == 1
+    assert schema.entities[0].name == "sample_brand_new"
+    assert len(schema.entities[0].fields) > 0
+
+    # Fingerprint
+    fp = await connector.fingerprint(config)
+    assert isinstance(fp, str)
+    assert len(fp) == 64
+
+
+@pytest.mark.asyncio
+async def test_source_service_create_and_duplicate():
+    """Test SourceService creation and duplicate identity check."""
+    repo = FakeRepository()
+    registry = SourceConnectorRegistry()
+    registry.register("csv", CsvConnector())
+    service = SourceService(
+        repository=repo,
+        registry=registry,
+        clock=FixedClock(),
+        id_generator=FixedIdGenerator(),
+    )
+
+    csv_path = str(Path("tests/fixtures/sample_brand_new.csv").resolve())
+    config_dict = {"path": csv_path, "delimiter": ","}
+
+    # Create source
+    source = await service.create_source(name="My CSV Source", kind="csv", config_dict=config_dict)
+    assert source.id == UUID("12345678-1234-5678-1234-567812345678")
+    assert source.name == "My CSV Source"
+    assert source.kind == "csv"
+
+    # Attempt to create duplicate source (same file path)
+    with pytest.raises(ConflictError, match="already exists"):
+        await service.create_source(name="Duplicate Source", kind="csv", config_dict=config_dict)
+
+
+@pytest.mark.asyncio
+async def test_source_service_not_found():
+    """Test SourceService not found errors."""
+    repo = FakeRepository()
+    registry = SourceConnectorRegistry()
+    service = SourceService(repository=repo, registry=registry)
+
+    unknown_id = UUID("87654321-4321-8765-4321-876543218765")
+
+    with pytest.raises(NotFoundError):
+        await service.get_source(unknown_id)
+
+    with pytest.raises(NotFoundError):
+        await service.update_source(unknown_id, name="New Name")
+
+    with pytest.raises(NotFoundError):
+        await service.delete_source(unknown_id)
+
+    with pytest.raises(NotFoundError):
+        await service.get_schema(unknown_id)
+
+
+@pytest.mark.asyncio
+async def test_source_service_unknown_kind():
+    """Test SourceService with unknown source kind."""
+    repo = FakeRepository()
+    registry = SourceConnectorRegistry()
+    service = SourceService(repository=repo, registry=registry)
+
+    with pytest.raises(DomainValidationError, match="Unknown source kind"):
+        await service.create_source(name="Bad Kind", kind="unknown", config_dict={})
