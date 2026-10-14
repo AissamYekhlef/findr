@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, String, Text
+from sqlalchemy import DateTime, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.app.core.database import Base
@@ -17,7 +17,7 @@ class SourceModel(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     kind: Mapped[str] = mapped_column(String(50), nullable=False)
-    config: Mapped[dict] = mapped_column(Text, nullable=False)  # JSON in DB
+    config: Mapped[dict] = mapped_column(JSON, nullable=False)  # JSON in DB
     config_version: Mapped[int] = mapped_column(default=1, nullable=False)
     identity_hash: Mapped[str] = mapped_column(
         String(64), nullable=False, unique=True, index=True

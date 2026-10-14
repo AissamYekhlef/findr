@@ -22,14 +22,19 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=naming_convention)
 
 
-# Create async engine
-engine = create_async_engine(
-    settings.database_url,
-    echo=settings.database_echo,
-    pool_pre_ping=True,
-    pool_size=20,
-    max_overflow=10,
-)
+# Create async engine with support for both SQLite and PostgreSQL
+connect_args = {"check_same_thread": False} if "sqlite" in settings.database_url else {}
+
+engine_kwargs = {
+    "echo": settings.database_echo,
+    "pool_pre_ping": True,
+    "connect_args": connect_args,
+}
+if "sqlite" not in settings.database_url:
+    engine_kwargs["pool_size"] = 20
+    engine_kwargs["max_overflow"] = 10
+
+engine = create_async_engine(settings.database_url, **engine_kwargs)
 
 # Create async session factory
 async_session_maker = async_sessionmaker(

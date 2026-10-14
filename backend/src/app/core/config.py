@@ -18,8 +18,8 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = Field(
-        default="postgresql+asyncpg://findr_user:dev_password@localhost:5432/findr",
-        description="PostgreSQL connection URL with asyncpg driver",
+        default="sqlite+aiosqlite:///./findr.db",
+        description="Database connection URL with async driver (supports SQLite and PostgreSQL)",
     )
     database_echo: bool = Field(
         default=False,
