@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from src.app.core import (
+    async_session_maker,
     close_db,
     get_session,
     init_db,
@@ -143,14 +144,14 @@ def create_app() -> FastAPI:
     async def readiness() -> dict:
         """Readiness check: app is ready to handle requests."""
         # Check database connection
-        async with get_session() as session:
-            try:
+        try:
+            async with async_session_maker() as session:
                 await session.execute(text("SELECT 1"))
-            except Exception as e:
-                raise HTTPException(
-                    status_code=503,
-                    detail=f"Database not ready: {str(e)}",
-                )
+        except Exception as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database not ready: {str(e)}",
+            )
         return {"status": "ready"}
 
     return app
