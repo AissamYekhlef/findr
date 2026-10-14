@@ -1,8 +1,10 @@
 """Application configuration using Pydantic Settings."""
 
+import os
+from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -41,14 +43,46 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = Field(default="INFO")
 
+    # Source Management
+    allowed_source_roots: list[str] = Field(
+        default=[],
+        description="Allowed root directories for source file registration (semicolon-separated on Windows, colon-separated on Unix)",
+    )
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
 
+    @field_validator("allowed_source_roots", mode="before")
+    @classmethod
+    def parse_allowed_roots(cls, v: str | list[str]) -> list[str]:
+        """Parse allowed roots from environment variable or list."""
+        if isinstance(v, list):
+            return v
+        if not v:
+            return []
+        # Split by semicolon on Windows, colon on Unix
+        separator = ";" if os.name == "nt" else ":"
+        roots = [root.strip() for root in v.split(separator) if root.strip()]
+        return roots
+
     def __init__(self, **data: object) -> None:
         """Validate configuration on init."""
         super().__init__(**data)
+
+        # Validate allowed source roots exist
+        if self.allowed_source_roots:
+            for root in self.allowed_source_roots:
+                root_path = Path(root)
+                if not root_path.exists():
+                    raise ValueError(
+                        f"ALLOWED_SOURCE_ROOTS directory does not exist: {root}"
+                    )
+                if not root_path.is_dir():
+                    raise ValueError(
+                        f"ALLOWED_SOURCE_ROOTS must be a directory: {root}"
+                    )
 
         # Validate production config
         if self.environment == "production":

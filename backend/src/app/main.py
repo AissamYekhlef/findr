@@ -154,6 +154,10 @@ def create_app() -> FastAPI:
             )
         return {"status": "ready"}
 
+    # Include routers
+    from src.app.modules.sources.router import router as sources_router
+    app.include_router(sources_router, prefix="/api/v1")
+
     return app
 
 
