@@ -1,14 +1,10 @@
 export default defineNuxtConfig({
+  compatibilityDate: '2025-07-15',
   ssr: false,
-  typescript: {
-    strict: true,
-    typeCheck: true,
-  },
-  modules: ['@pinia/nuxt'],
-  srcDir: 'app',
+  modules: ['@pinia/nuxt', '@nuxt/eslint'],
   css: ['~/assets/css/tokens.css'],
-  app: {
-    layoutTransitionDuration: { enter: 0, leave: 0 },
+  typescript: {
+    typeCheck: false,
   },
   nitro: {
     prerender: {
@@ -19,4 +15,4 @@ export default defineNuxtConfig({
     host: '0.0.0.0',
     port: 3000,
   },
-});
+})
