@@ -53,6 +53,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"
 
     @field_validator("allowed_source_roots", mode="before")
     @classmethod

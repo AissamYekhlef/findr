@@ -46,13 +46,22 @@ async_session_maker = async_sessionmaker(
 
 
 async def get_session() -> AsyncSession:
-    """Dependency to get database session for request.
+    """Dependency to get a transactional database session for a request.
+
+    Commits the transaction on success and rolls back on any exception, so
+    changes made by a request are actually persisted rather than silently
+    discarded when the session is closed.
 
     Yields:
         AsyncSession: Database session that is automatically closed after use.
     """
     async with async_session_maker() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 async def init_db() -> None:
