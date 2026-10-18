@@ -22,14 +22,19 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=naming_convention)
 
 
-# Create async engine
-engine = create_async_engine(
-    settings.database_url,
-    echo=settings.database_echo,
-    pool_pre_ping=True,
-    pool_size=20,
-    max_overflow=10,
-)
+# Create async engine with support for both SQLite and PostgreSQL
+connect_args = {"check_same_thread": False} if "sqlite" in settings.database_url else {}
+
+engine_kwargs = {
+    "echo": settings.database_echo,
+    "pool_pre_ping": True,
+    "connect_args": connect_args,
+}
+if "sqlite" not in settings.database_url:
+    engine_kwargs["pool_size"] = 20
+    engine_kwargs["max_overflow"] = 10
+
+engine = create_async_engine(settings.database_url, **engine_kwargs)
 
 # Create async session factory
 async_session_maker = async_sessionmaker(
@@ -41,13 +46,22 @@ async_session_maker = async_sessionmaker(
 
 
 async def get_session() -> AsyncSession:
-    """Dependency to get database session for request.
+    """Dependency to get a transactional database session for a request.
+
+    Commits the transaction on success and rolls back on any exception, so
+    changes made by a request are actually persisted rather than silently
+    discarded when the session is closed.
 
     Yields:
         AsyncSession: Database session that is automatically closed after use.
     """
     async with async_session_maker() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 async def init_db() -> None:

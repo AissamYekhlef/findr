@@ -1,5 +1,7 @@
 """Domain exceptions for Findr application."""
 
+from typing import Any
+
 
 class DomainException(Exception):
     """Base exception for all domain errors."""
@@ -16,7 +18,10 @@ class NotFoundError(DomainException):
 class ValidationError(DomainException):
     """Raised when input validation fails."""
 
-    pass
+    def __init__(self, message: str, details: Any = None) -> None:
+        super().__init__(message)
+        self.message = message
+        self.details = details
 
 
 class ConflictError(DomainException):

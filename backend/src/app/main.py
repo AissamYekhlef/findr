@@ -81,13 +81,16 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(ValidationError)
     async def validation_handler(request, exc):  # type: ignore
+        content = {
+            "code": "VALIDATION_ERROR",
+            "message": str(exc),
+            "request_id": request.headers.get("x-request-id", "unknown"),
+        }
+        if hasattr(exc, "details") and exc.details:
+            content["details"] = exc.details
         return JSONResponse(
             status_code=400,
-            content={
-                "code": "VALIDATION_ERROR",
-                "message": str(exc),
-                "request_id": request.headers.get("x-request-id", "unknown"),
-            },
+            content=content,
         )
 
     @app.exception_handler(ConflictError)
@@ -153,6 +156,10 @@ def create_app() -> FastAPI:
                 detail=f"Database not ready: {str(e)}",
             )
         return {"status": "ready"}
+
+    # Include routers
+    from src.app.modules.auth.router import router as auth_router
+    app.include_router(auth_router, prefix="/api/v1")
 
     return app
 
